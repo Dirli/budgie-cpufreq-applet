@@ -1,0 +1,7 @@
+[Plugin]
+Module=libbudgiecpufreqapplet.so
+Name=Budgie cpu frequency
+Description=Applet to control the frequency of the processor
+Authors=Dirli
+Website=https://github.com/Dirli/budgie-cpufreq-applet
+Icon=applications-system-symbolic

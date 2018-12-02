@@ -1,0 +1,32 @@
+#!/bin/bash
+
+while getopts "f:g:t:" opt; do
+    case ${opt} in
+        f)
+            # not yet implemented
+        ;;
+        g)
+            line=$(cat /sys/devices/system/cpu/cpu1/cpufreq/scaling_available_governors)
+            for word in $line; do
+                if [[ $word = $OPTARG ]]; then
+                    governon=$word
+                    break
+                fi
+            done
+            if [[ -n $governon ]]; then
+                cpu_i=0
+                while [ -d "/sys/devices/system/cpu/cpu$cpu_i" ]; do
+                    echo "$governon" > /sys/devices/system/cpu/cpu${cpu_i}/cpufreq/scaling_governor
+                    cpu_i=$(($cpu_i+1))
+                done
+            fi
+        ;;
+        t)
+            if [[ $OPTARG == "on" ]]; then
+                echo "0" > /sys/devices/system/cpu/intel_pstate/no_turbo
+            elif [[ $OPTARG == "off" ]]; then
+                echo "1" > /sys/devices/system/cpu/intel_pstate/no_turbo
+            fi
+        ;;
+    esac
+done
