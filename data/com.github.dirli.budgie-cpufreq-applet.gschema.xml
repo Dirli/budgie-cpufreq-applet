@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+
+  <schema id="com.github.dirli.budgie-cpufreq-applet">
+      <key type="b" name="turbo-boost">
+        <default>true</default>
+        <summary>Show Icon</summary>
+        <description>Whether to show icon about weather</description>
+      </key>
+      <key type="s" name="governor">
+        <default>""</default>
+        <summary>City name</summary>
+        <description>City name</description>
+      </key>
+  </schema>
+</schemalist>

@@ -10,3 +10,7 @@ install_data(
 install_data('budgie.cpufreq.policy',
     install_dir: join_paths(get_option('datadir'), 'polkit-1', 'actions')
 )
+
+install_data('com.github.dirli.budgie-cpufreq-applet.gschema.xml',
+    install_dir: join_paths(get_option('datadir'), 'glib-2.0/schemas')
+)

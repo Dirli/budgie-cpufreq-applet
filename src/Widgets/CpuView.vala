@@ -13,16 +13,17 @@
 */
 
 namespace CpuFreqApplet {
-    public class Cpu : Gtk.Grid {
+    public class Widgets.CpuView : Gtk.Grid {
         private string cpu_path = "/sys/devices/system/cpu/";
         private string cli_path = "pkexec /usr/lib/budgie-desktop/plugins/budgie-cpufreq-applet/budgie-cpufreq-modifier";
         private string freq_driver;
-        private string current_governor;
+
         private string[]? available_freqs = null;
         private string[] available_governors;
 
-        private static Polkit.Permission? permission = null;
-        private bool turbo_boost {
+        private Settings? settings;
+
+        public bool turbo_boost {
             get {
                 string _turbo_boost;
                 try {
@@ -37,7 +38,7 @@ namespace CpuFreqApplet {
                 return true;
             }
             set {
-                if (get_permission ().allowed) {
+                if (Utils.get_permission ().allowed) {
                     string cli_cmd = cli_path + " -t ";
                     if (value) {
                         cli_cmd += "on";
@@ -45,15 +46,17 @@ namespace CpuFreqApplet {
                         cli_cmd += "off";
                     }
 
-                    run_cli (cli_cmd);
+                    Utils.run_cli (cli_cmd);
                 }
             }
         }
 
-        public Cpu () {
+        public CpuView (Settings settings) {
             row_spacing = 10;
             margin_top = margin_bottom = 10;
             margin_start = margin_end = 6;
+
+            this.settings = settings;
 
             if (!FileUtils.test(cpu_path + "cpu0/cpufreq", FileTest.IS_DIR)) {
                 Gtk.Label label = new Gtk.Label ("Your system does not support cpufreq");
@@ -68,23 +71,17 @@ namespace CpuFreqApplet {
                 } else {
                     Gtk.Label tb_label = new Gtk.Label ("Turbo Boost");
                     Gtk.Switch tb_switch = new Gtk.Switch ();
-                    tb_switch.active = turbo_boost;
-
-                    tb_switch.notify["active"].connect (() => {
-                        if ((tb_switch as Gtk.Switch).get_active ()) {
-                            turbo_boost = true;
-                        } else {
-                            turbo_boost = false;
-                        }
-                    });
+                    turbo_boost = settings.get_boolean("turbo-boost");
+                    tb_switch.active = settings.get_boolean("turbo-boost");
 
                     attach (tb_label,  0, top, 1, 1);
                     attach (tb_switch, 1, top, 1, 1);
                     ++top;
+                    settings.bind("turbo-boost", tb_switch, "active", SettingsBindFlags.DEFAULT);
                 }
 
                 available_governors = get_available_governors ();
-                current_governor = get_cur_governor ();
+                string current_governor = get_governor ();
 
                 Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
                 separator.margin_bottom = 6;
@@ -95,43 +92,31 @@ namespace CpuFreqApplet {
 
                 foreach (string gov in available_governors) {
                     Gtk.RadioButton button;
+                    gov = gov.chomp ();
 
-                    button = new Gtk.RadioButton.with_label_from_widget (button1, gov.chomp ());
+                    button = new Gtk.RadioButton.with_label_from_widget (button1, gov);
                     attach (button, 0, top, 2, 1);
                     ++top;
 
-                    button.toggled.connect (toggled_governor);
                     if (button1 == null) {
                         button1 = button;
                     }
 
-                    if (gov.chomp () == current_governor) {
+                    if (gov == current_governor) {
                         button.set_active (true);
+                        set_governor (gov);
                     }
+
+                    button.toggled.connect (toggled_governor);
                 }
             }
         }
 
         private unowned void toggled_governor (Gtk.ToggleButton button) {
-            if (get_permission ().allowed) {
-                string cli_cmd = cli_path + " -g " + button.label;
-                run_cli (cli_cmd);
-            }
-        }
-
-        private void run_cli (string cli_cmd) {
-            string stdout;
-            string stderr;
-            int status;
-
-            try {
-                Process.spawn_command_line_sync (
-                    cli_cmd,
-                    out stdout,
-                    out stderr,
-                    out status);
-            } catch (Error e) {
-                warning (e.message);
+            if (Utils.get_permission ().allowed) {
+                if (button.get_active ()) {
+                    settings.set_string("governor", button.label);
+                }
             }
         }
 
@@ -154,87 +139,36 @@ namespace CpuFreqApplet {
                 }
             }
 
-            return format_frequency (maxcur);
+            return Utils.format_frequency (maxcur);
         }
 
+        public void set_governor (string governor) {
+            string cli_cmd = cli_path + " -g " + governor;
+            Utils.run_cli (cli_cmd);
+        }
 
-        public string get_cur_governor () {
-            string governor = "";
-            try {
-                FileUtils.get_contents ((cpu_path + "cpu0/cpufreq/scaling_governor"), out governor);
-            } catch (Error e) {
-                warning (e.message);
+        public string get_governor () {
+            string cur_governor = settings.get_string("governor");
+
+            if (cur_governor == "") {
+                cur_governor = Utils.get_content ((cpu_path + "cpu0/cpufreq/scaling_governor"));
             }
-            return governor.chomp ();
 
+            return cur_governor;
         }
 
         public string[] get_available_freqs () {
-            string? freq_str = "";
-            string str = cpu_path + "cpu0/cpufreq/scaling_available_frequencies";
-
-            try {
-                FileUtils.get_contents (str, out freq_str);
-            } catch (Error e) {
-                warning (e.message);
-            }
-
-            string[] freq_arr = freq_str.split (" ");
-            return freq_arr;
+            string freq_str = Utils.get_content (cpu_path + "cpu0/cpufreq/scaling_available_frequencies");
+            return freq_str.split (" ");
         }
 
         public string[] get_available_governors () {
-            string? gov_str = "";
-
-            try {
-                FileUtils.get_contents (cpu_path + "cpu0/cpufreq/scaling_available_governors", out gov_str);
-            } catch (Error e) {
-                warning (e.message);
-            }
-
-            string[] gov_arr = gov_str.split (" ");
-            return gov_arr;
+            string gov_str = Utils.get_content (cpu_path + "cpu0/cpufreq/scaling_available_governors");
+            return gov_str.split (" ");
         }
 
         public string get_cpufreq_driver () {
-            string? driver = "";
-
-            try {
-                FileUtils.get_contents (cpu_path + "cpu0/cpufreq/scaling_driver", out driver);
-            } catch (Error e) {
-                warning (e.message);
-            }
-
-            return driver.chomp ();
-        }
-
-        public static Polkit.Permission? get_permission () {
-            if (permission != null) {
-                return permission;
-            }
-
-            try {
-                permission = new Polkit.Permission.sync ("budgie.cpufreq.setcpufreq", new Polkit.UnixProcess (Posix.getpid ()));
-                return permission;
-            } catch (Error e) {
-                critical (e.message);
-                return null;
-            }
-        }
-
-        public string format_frequency (double val) {
-            const string[] units = {
-                "{} MHz",
-                "{} GHz"
-            };
-            int index = -1;
-
-            while (index + 1 < units.length && (val >= 1000 || index < 0)) {
-                val /= 1000;
-                ++index;
-            }
-            var pattern = units[index].replace ("{}", val <   9.95 ? "%.1f" : "%.0f");
-            return pattern.printf (val);
+            return Utils.get_content (cpu_path + "cpu0/cpufreq/scaling_driver");
         }
     }
 }

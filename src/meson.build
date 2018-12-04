@@ -2,7 +2,8 @@ vala_compiler = meson.get_compiler('vala')
 
 bcfa_sources = [
     'CpuFreqApplet.vala',
-    'Cpu.vala'
+    'Utils.vala',
+    'Widgets/CpuView.vala'
 ]
 
 bcfa_deps = [

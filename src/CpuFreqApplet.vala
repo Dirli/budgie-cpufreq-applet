@@ -23,15 +23,20 @@ namespace CpuFreqApplet {
 
         Budgie.Popover? popover = null;
         unowned Budgie.PopoverManager? manager = null;
-        CpuFreqApplet.Cpu? popover_grid = null;
+        CpuFreqApplet.Widgets.CpuView? cpu_view = null;
 
         public string uuid { public set; public get; }
         private uint source_id;
+        private Settings? settings;
 
         public Applet(string uuid) {
             Object(uuid: uuid);
+            settings_schema = "com.github.dirli.budgie-cpufreq-applet";
+            settings_prefix = "/com/github/dirli/budgie-cpufreq-applet";
+            settings = get_applet_settings(uuid);
+            settings.changed.connect(on_settings_change);
 
-            popover_grid = new Cpu ();
+            cpu_view = new Widgets.CpuView (settings);
             cpu_freq = new Gtk.Label ("-");
 
             Gtk.Box box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
@@ -42,7 +47,7 @@ namespace CpuFreqApplet {
             add(widget);
 
             popover = new Budgie.Popover (widget);
-            popover.add(popover_grid);
+            popover.add(cpu_view);
 
             widget.button_press_event.connect((e) => {
                 if (e.button != 1) {
@@ -73,9 +78,17 @@ namespace CpuFreqApplet {
         }
 
         private unowned bool update () {
-            cpu_freq.label = popover_grid.get_cur_frequency ();
+            cpu_freq.label = cpu_view.get_cur_frequency ();
 
             return true;
+        }
+
+        protected void on_settings_change(string key) {
+            if (key == "turbo-boost") {
+                cpu_view.turbo_boost = settings.get_boolean("turbo-boost");
+            } else if (key == "governor") {
+                cpu_view.set_governor (settings.get_string("governor"));
+            }
         }
 
         public override void update_popovers(Budgie.PopoverManager? manager){
