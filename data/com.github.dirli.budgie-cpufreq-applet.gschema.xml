@@ -4,13 +4,23 @@
   <schema id="com.github.dirli.budgie-cpufreq-applet">
       <key type="b" name="turbo-boost">
         <default>true</default>
-        <summary>Show Icon</summary>
-        <description>Whether to show icon about weather</description>
+        <summary>Turbo boost</summary>
+        <description>Saves the state of the Turbo boost</description>
       </key>
       <key type="s" name="governor">
         <default>""</default>
-        <summary>City name</summary>
-        <description>City name</description>
+        <summary>Governor</summary>
+        <description>Saves the state of the governor</description>
+      </key>
+      <key type="d" name="pstate-max">
+        <default>0</default>
+        <summary>Max scaling</summary>
+        <description>Maximum frequency scaling</description>
+      </key>
+      <key type="d" name="pstate-min">
+        <default>0</default>
+        <summary>Min scaling</summary>
+        <description>Minimum frequency scaling</description>
       </key>
   </schema>
 </schemalist>

@@ -3,7 +3,14 @@
 while getopts "f:g:t:" opt; do
     case ${opt} in
         f)
-            # not yet implemented
+            operation=$(echo "$OPTARG" | cut -d : -f 1)
+            val=$(echo "$OPTARG" | cut -d : -f 2)
+            re='^[0-9]+$'
+            if [[ $val =~ $re && $val -ge 25 && $val -le 100 ]]; then
+                if [[ -f "/sys/devices/system/cpu/intel_pstate/${operation}_perf_pct" ]]; then
+                    echo "$val" > "/sys/devices/system/cpu/intel_pstate/${operation}_perf_pct"
+                fi
+            fi
         ;;
         g)
             line=$(cat /sys/devices/system/cpu/cpu1/cpufreq/scaling_available_governors)

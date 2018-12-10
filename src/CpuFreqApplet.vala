@@ -84,10 +84,25 @@ namespace CpuFreqApplet {
         }
 
         protected void on_settings_change(string key) {
-            if (key == "turbo-boost") {
-                cpu_view.turbo_boost = settings.get_boolean("turbo-boost");
-            } else if (key == "governor") {
-                cpu_view.set_governor (settings.get_string("governor"));
+            switch (key) {
+                case "turbo-boost":
+                    cpu_view.turbo_boost = settings.get_boolean("turbo-boost");
+                    break;
+                case "governor":
+                    cpu_view.set_governor (settings.get_string("governor"));
+                    break;
+                case "pstate-max":
+                    if (Utils.get_permission ().allowed) {
+                        string cli_cmd = " -f max:%.0f".printf(settings.get_double("pstate-max"));
+                        Utils.run_cli (cli_cmd);
+                    }
+                    break;
+                case "pstate-min":
+                    if (Utils.get_permission ().allowed) {
+                        string cli_cmd = " -f min:%.0f".printf(settings.get_double("pstate-min"));
+                        Utils.run_cli (cli_cmd);
+                    }
+                    break;
             }
         }
 

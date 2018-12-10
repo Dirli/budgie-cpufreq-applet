@@ -27,14 +27,16 @@ namespace CpuFreqApplet {
             return content.chomp ();
         }
 
-        public static void run_cli (string cli_cmd) {
+        public static void run_cli (string cmd_par) {
             string stdout;
             string stderr;
             int status;
+            string cli_path = "pkexec /usr/lib/budgie-desktop/plugins/budgie-cpufreq-applet/budgie-cpufreq-modifier ";
+            string cmd = cli_path + cmd_par;
 
             try {
                 Process.spawn_command_line_sync (
-                    cli_cmd,
+                    cmd,
                     out stdout,
                     out stderr,
                     out status);

@@ -15,9 +15,7 @@
 namespace CpuFreqApplet {
     public class Widgets.CpuView : Gtk.Grid {
         private string cpu_path = "/sys/devices/system/cpu/";
-        private string cli_path = "pkexec /usr/lib/budgie-desktop/plugins/budgie-cpufreq-applet/budgie-cpufreq-modifier";
         private string freq_driver;
-
         private string[]? available_freqs = null;
         private string[] available_governors;
 
@@ -39,7 +37,7 @@ namespace CpuFreqApplet {
             }
             set {
                 if (Utils.get_permission ().allowed) {
-                    string cli_cmd = cli_path + " -t ";
+                    string cli_cmd = "-t ";
                     if (value) {
                         cli_cmd += "on";
                     } else {
@@ -54,7 +52,7 @@ namespace CpuFreqApplet {
         public CpuView (Settings settings) {
             row_spacing = 10;
             margin_top = margin_bottom = 10;
-            margin_start = margin_end = 6;
+            margin_start = margin_end = 15;
 
             this.settings = settings;
 
@@ -72,11 +70,45 @@ namespace CpuFreqApplet {
                     Gtk.Label tb_label = new Gtk.Label ("Turbo Boost");
                     Gtk.Switch tb_switch = new Gtk.Switch ();
                     turbo_boost = settings.get_boolean("turbo-boost");
-                    tb_switch.active = settings.get_boolean("turbo-boost");
+                    /* tb_switch.active = settings.get_boolean("turbo-boost"); */
 
                     attach (tb_label,  0, top, 1, 1);
                     attach (tb_switch, 1, top, 1, 1);
                     ++top;
+
+                    string min_freq_pct = Utils.get_content ("/sys/devices/system/cpu/intel_pstate/min_perf_pct");
+                    string max_freq_pct = Utils.get_content ("/sys/devices/system/cpu/intel_pstate/max_perf_pct");
+                    if (min_freq_pct != "" && max_freq_pct != "") {
+                        Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
+                        separator.margin_bottom = 6;
+                        attach (separator, 0, top, 2, 1);
+                        ++top;
+
+                        Gtk.Label min_freq = new Gtk.Label ("Minimum frequency:");
+                        attach (min_freq, 0, top, 2, 1);
+                        ++top;
+                        Gtk.Scale min_scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 25, 100, 5);
+                        min_scale.margin_start = min_scale.margin_end = 10;
+                        min_scale.set_value (double.parse (min_freq_pct));
+                        attach (min_scale, 0, top, 2, 1);
+                        ++top;
+
+                        Gtk.Label max_freq = new Gtk.Label ("Maximum frequency:");
+                        attach (max_freq, 0, top, 2, 1);
+                        ++top;
+                        Gtk.Scale max_scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 25, 100, 5);
+                        max_scale.margin_start = max_scale.margin_end = 10;
+                        max_scale.set_value (double.parse (max_freq_pct));
+                        attach (max_scale, 0, top, 2, 1);
+                        ++top;
+
+                        min_scale.value_changed.connect (() => {
+                            settings.set_double ("pstate-min", min_scale.get_value ());
+                        });
+                        max_scale.value_changed.connect (() => {
+                            settings.set_double ("pstate-max", max_scale.get_value ());
+                        });
+                    }
                     settings.bind("turbo-boost", tb_switch, "active", SettingsBindFlags.DEFAULT);
                 }
 
@@ -143,7 +175,7 @@ namespace CpuFreqApplet {
         }
 
         public void set_governor (string governor) {
-            string cli_cmd = cli_path + " -g " + governor;
+            string cli_cmd = " -g " + governor;
             Utils.run_cli (cli_cmd);
         }
 
