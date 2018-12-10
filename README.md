@@ -2,6 +2,13 @@
 A budgie-desktop applet to control the frequency of the processor.
 Applet can manage intel_pstate driver (turbo boost, CPU frequency scaling, governor). I will add an additional function if requested.
 
+![Screenshot](data/screenshot1.png)  
+
+### Popover
+![Screenshot](data/screenshot2.png)  
+
+---
+
 ## Dependencies
 ```
 vala
