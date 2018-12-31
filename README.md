@@ -1,6 +1,6 @@
 # CPU frequency applet
-A budgie-desktop applet to control the frequency of the processor.
-Applet can manage intel_pstate driver (turbo boost, CPU frequency scaling, governor). I will add an additional function if requested.
+A budgie-desktop applet to control the frequency of the processor (Sandy Bridge and newer).
+Applet can manage intel_pstate driver (turbo boost, CPU frequency scaling, governor).
 
 ![Screenshot](data/screenshot1.png)  
 

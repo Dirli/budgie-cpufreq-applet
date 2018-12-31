@@ -13,7 +13,14 @@
 */
 
 namespace CpuFreqApplet {
+
+    public const string CPU_PATH = "/sys/devices/system/cpu/";
+
     public class Utils {
+        private static GLib.Settings settings;
+        public static void init_utils (GLib.Settings app_settings) {
+            settings = app_settings;
+        }
         public static string get_content (string file_path) {
             string content;
 
@@ -25,6 +32,40 @@ namespace CpuFreqApplet {
             }
 
             return content.chomp ();
+        }
+
+        public static double get_freq_pct (string adv) {
+            string cur_freq_pct = Utils.get_content (CPU_PATH + "intel_pstate/" + adv + "_perf_pct");
+            return double.parse (cur_freq_pct);
+        }
+
+        public static string get_governor () {
+            return Utils.get_content ((CPU_PATH + "cpu0/cpufreq/scaling_governor"));
+        }
+
+        public static string[] get_available_values (string path) {
+            string val_str = Utils.get_content (CPU_PATH + @"cpu0/cpufreq/scaling_available_$path");
+            return val_str.split (" ");
+        }
+
+        public static double get_cur_frequency () {
+            string cur_value;
+            double maxcur = 0;
+
+            for (uint i = 0, isize = (int)get_num_processors (); i < isize; ++i) {
+                cur_value = Utils.get_content (CPU_PATH + @"cpu$i/cpufreq/scaling_cur_freq");
+
+                if (cur_value == "") {continue;}
+                var cur = double.parse (cur_value);
+
+                if (i == 0) {
+                    maxcur = cur;
+                } else {
+                    maxcur = double.max (cur, maxcur);
+                }
+            }
+
+            return maxcur;
         }
 
         public static void run_cli (string cmd_par) {

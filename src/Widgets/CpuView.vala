@@ -14,133 +14,68 @@
 
 namespace CpuFreqApplet {
     public class Widgets.CpuView : Gtk.Grid {
-        private string cpu_path = "/sys/devices/system/cpu/";
-        private string freq_driver;
-        private string[]? available_freqs = null;
-        private string[] available_governors;
 
-        private Settings? settings;
+        private int top = 0;
+        private GLib.Settings settings;
 
-        public bool turbo_boost {
-            get {
-                string _turbo_boost;
-                try {
-                    FileUtils.get_contents ((cpu_path + "intel_pstate/no_turbo"), out _turbo_boost);
-                } catch (Error e) {
-                    _turbo_boost = "1";
-                    warning (e.message);
-                }
-                if (_turbo_boost.chomp () == "1") {
-                    return false;
-                }
-                return true;
-            }
-            set {
-                if (Utils.get_permission ().allowed) {
-                    string cli_cmd = "-t ";
-                    if (value) {
-                        cli_cmd += "on";
-                    } else {
-                        cli_cmd += "off";
-                    }
-
-                    Utils.run_cli (cli_cmd);
-                }
-            }
-        }
-
-        public CpuView (Settings settings) {
+        public CpuView (GLib.Settings settings) {
+            orientation = Gtk.Orientation.HORIZONTAL;
+            hexpand = true;
             row_spacing = 10;
             margin_top = margin_bottom = 10;
             margin_start = margin_end = 15;
 
             this.settings = settings;
 
-            if (!FileUtils.test(cpu_path + "cpu0/cpufreq", FileTest.IS_DIR)) {
-                Gtk.Label label = new Gtk.Label ("Your system does not support cpufreq");
+            if (!FileUtils.test(CPU_PATH + "cpu0/cpufreq", FileTest.IS_DIR)) {
+                Gtk.Label label = new Gtk.Label (_("Your system does not support cpufreq manage"));
+                label.get_style_context ().add_class ("h2");
+                label.sensitive = false;
+                label.margin_top = label.margin_bottom = 24;
+                label.margin_start = label.margin_end = 12;
                 attach (label,  0, 0, 1, 1);
             } else {
-                int top = 0;
-                freq_driver = get_cpufreq_driver ();
+                string freq_driver = Utils.get_content (CPU_PATH + "cpu0/cpufreq/scaling_driver");
 
                 if (freq_driver != "intel_pstate") {
-                    available_freqs = get_available_freqs ();
-                    /* not yet implemented */
+                    debug ("not yet implemented");
+                    string[] available_freqs = Utils.get_available_values ("frequencies");
                 } else {
-                    Gtk.Label tb_label = new Gtk.Label ("Turbo Boost");
-                    Gtk.Switch tb_switch = new Gtk.Switch ();
-                    turbo_boost = settings.get_boolean("turbo-boost");
-                    /* tb_switch.active = settings.get_boolean("turbo-boost"); */
-
-                    attach (tb_label,  0, top, 1, 1);
-                    attach (tb_switch, 1, top, 1, 1);
-                    ++top;
-
-                    string min_freq_pct = Utils.get_content ("/sys/devices/system/cpu/intel_pstate/min_perf_pct");
-                    string max_freq_pct = Utils.get_content ("/sys/devices/system/cpu/intel_pstate/max_perf_pct");
-                    if (min_freq_pct != "" && max_freq_pct != "") {
-                        Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
-                        separator.margin_bottom = 6;
-                        attach (separator, 0, top, 2, 1);
-                        ++top;
-
-                        Gtk.Label min_freq = new Gtk.Label ("Minimum frequency:");
-                        attach (min_freq, 0, top, 2, 1);
-                        ++top;
-                        Gtk.Scale min_scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 25, 100, 5);
-                        min_scale.margin_start = min_scale.margin_end = 10;
-                        min_scale.set_value (double.parse (min_freq_pct));
-                        attach (min_scale, 0, top, 2, 1);
-                        ++top;
-
-                        Gtk.Label max_freq = new Gtk.Label ("Maximum frequency:");
-                        attach (max_freq, 0, top, 2, 1);
-                        ++top;
-                        Gtk.Scale max_scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 25, 100, 5);
-                        max_scale.margin_start = max_scale.margin_end = 10;
-                        max_scale.set_value (double.parse (max_freq_pct));
-                        attach (max_scale, 0, top, 2, 1);
-                        ++top;
-
-                        min_scale.value_changed.connect (() => {
-                            settings.set_double ("pstate-min", min_scale.get_value ());
-                        });
-                        max_scale.value_changed.connect (() => {
-                            settings.set_double ("pstate-max", max_scale.get_value ());
-                        });
-                    }
-                    settings.bind("turbo-boost", tb_switch, "active", SettingsBindFlags.DEFAULT);
+                    add_turbo_boost ();
                 }
 
-                available_governors = get_available_governors ();
-                string current_governor = get_governor ();
+                add_governor ();
+            }
+        }
 
-                Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
-                separator.margin_bottom = 6;
-                attach (separator, 0, top, 2, 1);
+        private void add_governor () {
+            string current_governor = Utils.get_governor ();
+
+            Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
+            separator.hexpand = true;
+            separator.margin_bottom = 6;
+            attach (separator, 0, top, 2, 1);
+            ++top;
+
+            Gtk.RadioButton? button1 = null;
+
+            foreach (string gov in Utils.get_available_values ("governors")) {
+                Gtk.RadioButton button;
+                gov = gov.chomp ();
+
+                button = new Gtk.RadioButton.with_label_from_widget (button1, gov);
+                button.margin_start = button.margin_end = 15;
+                button.margin_bottom = 10;
+                button.halign = Gtk.Align.START;
+                button.valign = Gtk.Align.CENTER;
+                attach (button, 0, top, 2, 1);
                 ++top;
 
-                Gtk.RadioButton? button1 = null;
-
-                foreach (string gov in available_governors) {
-                    Gtk.RadioButton button;
-                    gov = gov.chomp ();
-
-                    button = new Gtk.RadioButton.with_label_from_widget (button1, gov);
-                    attach (button, 0, top, 2, 1);
-                    ++top;
-
-                    if (button1 == null) {
-                        button1 = button;
-                    }
-
-                    if (gov == current_governor) {
-                        button.set_active (true);
-                        set_governor (gov);
-                    }
-
-                    button.toggled.connect (toggled_governor);
+                if (button1 == null) {button1 = button;}
+                if (gov == current_governor) {
+                    button.set_active (true);
                 }
+                button.toggled.connect (toggled_governor);
             }
         }
 
@@ -152,55 +87,50 @@ namespace CpuFreqApplet {
             }
         }
 
-        public string get_cur_frequency () {
-            string cur_value;
-            double maxcur = 0;
+        private void add_turbo_boost () {
+            Gtk.Label tb_label = new Gtk.Label ("Turbo Boost");
+            tb_label.halign = Gtk.Align.START;
+            Gtk.Switch tb_switch = new Gtk.Switch ();
+            tb_switch.halign = Gtk.Align.END;
+            settings.bind("turbo-boost", tb_switch, "active", GLib.SettingsBindFlags.DEFAULT);
 
-            for (uint i = 0, isize = (int)get_num_processors (); i < isize; ++i) {
-                try {
-                    FileUtils.get_contents (@"/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq", out cur_value);
-                } catch (Error e) {
-                    cur_value = "0";
-                }
-                var cur = double.parse (cur_value);
+            attach (tb_label,  0, top, 1, 1);
+            attach (tb_switch, 1, top, 1, 1);
+            ++top;
 
-                if (i == 0) {
-                    maxcur = cur;
-                } else {
-                    maxcur = double.max (cur, maxcur);
-                }
-            }
+            Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
+            separator.hexpand = true;
+            separator.margin_bottom = 6;
+            attach (separator, 0, top, 2, 1);
+            ++top;
 
-            return Utils.format_frequency (maxcur);
-        }
 
-        public void set_governor (string governor) {
-            string cli_cmd = " -g " + governor;
-            Utils.run_cli (cli_cmd);
-        }
+            Gtk.Label min_freq = new Gtk.Label (_("Minimum frequency:"));
+            attach (min_freq, 0, top, 2, 1);
+            ++top;
+            Gtk.Scale min_scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 25, 100, 5);
+            min_scale.margin_start = min_scale.margin_end = 10;
+            min_scale.set_value (Utils.get_freq_pct ("min"));
+            attach (min_scale, 0, top, 2, 1);
+            ++top;
 
-        public string get_governor () {
-            string cur_governor = settings.get_string("governor");
+            Gtk.Label max_freq = new Gtk.Label (_("Maximum frequency:"));
+            attach (max_freq, 0, top, 2, 1);
+            ++top;
+            Gtk.Scale max_scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 25, 100, 5);
+            max_scale.margin_start = max_scale.margin_end = 10;
+            max_scale.set_value (Utils.get_freq_pct ("max"));
+            attach (max_scale, 0, top, 2, 1);
+            ++top;
 
-            if (cur_governor == "") {
-                cur_governor = Utils.get_content ((cpu_path + "cpu0/cpufreq/scaling_governor"));
-            }
+            min_freq.halign = max_freq.halign = Gtk.Align.CENTER;
 
-            return cur_governor;
-        }
-
-        public string[] get_available_freqs () {
-            string freq_str = Utils.get_content (cpu_path + "cpu0/cpufreq/scaling_available_frequencies");
-            return freq_str.split (" ");
-        }
-
-        public string[] get_available_governors () {
-            string gov_str = Utils.get_content (cpu_path + "cpu0/cpufreq/scaling_available_governors");
-            return gov_str.split (" ");
-        }
-
-        public string get_cpufreq_driver () {
-            return Utils.get_content (cpu_path + "cpu0/cpufreq/scaling_driver");
+            min_scale.value_changed.connect (() => {
+                settings.set_double ("pstate-min", min_scale.get_value ());
+            });
+            max_scale.value_changed.connect (() => {
+                settings.set_double ("pstate-max", max_scale.get_value ());
+            });
         }
     }
 }

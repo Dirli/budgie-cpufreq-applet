@@ -25,6 +25,11 @@ am_cflags = [
 
 add_global_arguments(am_cflags, language: 'c')
 
+add_project_arguments(
+    '-DGETTEXT_PACKAGE="@0@"'.format(meson.project_name()),
+    language:'c'
+)
+
 dep_gtk3 = dependency('gtk+-3.0', version: '>=3.18')
 dep_glib = dependency('glib-2.0', version: '>= 2.46.0')
 dep_peas = dependency('libpeas-1.0', version: '>= 1.8.0')

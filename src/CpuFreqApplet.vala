@@ -34,6 +34,13 @@ namespace CpuFreqApplet {
             settings_schema = "com.github.dirli.budgie-cpufreq-applet";
             settings_prefix = "/com/github/dirli/budgie-cpufreq-applet";
             settings = get_applet_settings(uuid);
+            CpuFreqApplet.Utils.init_utils (settings);
+
+            on_settings_change("turbo-boost");
+            on_settings_change("governor");
+            on_settings_change("pstate-max");
+            on_settings_change("pstate-min");
+
             settings.changed.connect(on_settings_change);
 
             cpu_view = new Widgets.CpuView (settings);
@@ -78,7 +85,8 @@ namespace CpuFreqApplet {
         }
 
         private unowned bool update () {
-            cpu_freq.label = cpu_view.get_cur_frequency ();
+            double cur_freq = CpuFreqApplet.Utils.get_cur_frequency ();
+            cpu_freq.label = CpuFreqApplet.Utils.format_frequency (cur_freq);
 
             return true;
         }
@@ -86,24 +94,19 @@ namespace CpuFreqApplet {
         protected void on_settings_change(string key) {
             switch (key) {
                 case "turbo-boost":
-                    cpu_view.turbo_boost = settings.get_boolean("turbo-boost");
+                    CpuFreqApplet.Services.FreqManager.set_turbo_boost (settings.get_boolean("turbo-boost"));
                     break;
                 case "governor":
-                    cpu_view.set_governor (settings.get_string("governor"));
+                    CpuFreqApplet.Services.FreqManager.set_governor (settings.get_string("governor"));
                     break;
                 case "pstate-max":
-                    if (Utils.get_permission ().allowed) {
-                        string cli_cmd = " -f max:%.0f".printf(settings.get_double("pstate-max"));
-                        Utils.run_cli (cli_cmd);
-                    }
+                    CpuFreqApplet.Services.FreqManager.set_freq_scaling ("max", settings.get_double("pstate-max"));
                     break;
                 case "pstate-min":
-                    if (Utils.get_permission ().allowed) {
-                        string cli_cmd = " -f min:%.0f".printf(settings.get_double("pstate-min"));
-                        Utils.run_cli (cli_cmd);
-                    }
+                    CpuFreqApplet.Services.FreqManager.set_freq_scaling ("min", settings.get_double("pstate-min"));
                     break;
             }
+            return;
         }
 
         public override void update_popovers(Budgie.PopoverManager? manager){
