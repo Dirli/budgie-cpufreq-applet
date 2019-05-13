@@ -1,6 +1,6 @@
 project('budgie-cpufreq-applet',
     ['c', 'vala'],
-    version: '1.0.2',
+    version: '1.0.3',
     license: 'GPL-2.0',
     default_options: [
         'c_std=c11',
