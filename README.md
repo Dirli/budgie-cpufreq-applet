@@ -22,7 +22,7 @@ polkit-gobject-1
 
 ### Installing from source
 ```
-meson build --prefix /usr --buildtype=plain
+meson build --prefix=/usr --buildtype=plain
 ninja -C build
 sudo ninja -C build install
 ```
